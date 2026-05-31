@@ -79,7 +79,7 @@ function calcNetWorth(state, player) {
     player.properties.forEach(pos => {
         const c = BOARD[pos]; const s = state.cellState[pos];
         total += s.mortgaged ? Math.floor(c.price / 2) : c.price;
-        total += s.houses === 5 ? c.housePrice * 5 : s.houses * c.housePrice;
+        total += s.houses === 5 ? (c.housePrice || 0) * 5 : s.houses * (c.housePrice || 0);
     });
     total -= (player.loan || 0) + (player.loanInterest || 0);
     return total;
@@ -382,8 +382,10 @@ function processAction(state, type, data, room) {
             break;
         }
         case 'payRent': {
-            const { rent, ownerId } = state.pendingData || {};
+            if (state.pendingAction !== 'payRent' || !state.pendingData) break;
+            const { rent, ownerId } = state.pendingData;
             const owner = state.players[ownerId];
+            if (!owner || typeof rent !== 'number') break;
             if (player.money < rent) break;
             player.money -= rent; owner.money += rent; player.stats.rentPaid += rent; owner.stats.rentReceived += rent;
             addLog(state, `💰 ${player.name} сплатив(ла) оренду ₴${rent} → ${owner.name}`, 'warn');
