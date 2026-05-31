@@ -439,7 +439,9 @@ function applyState(state, diceRolled, landingPos, onDone) {
         setTimeout(() => window.showLoanMenu?.(), 0);
     }
 
-    if (pendingRent && state.pendingAction === 'payRent' && myPlayerIndex === state.currentPlayerIndex) {
+    // Показуємо модал оренди тільки при reconnect (onDone = null).
+    // При живому stateUpdate це робить handleSideEffect — інакше модал вискакує двічі.
+    if (!onDone && pendingRent && state.pendingAction === 'payRent' && myPlayerIndex === state.currentPlayerIndex) {
         const { cell, rent, owner } = pendingRent;
         showRentModalOnline(players[currentPlayerIndex], cell, rent, owner);
     }
