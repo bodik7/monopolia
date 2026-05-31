@@ -562,8 +562,7 @@ function getMafiaBotDecisions(room) {
                 return;
             }
 
-            if (st.phase === 'day_voting') {
-                if (st.votes[bp.index] !== undefined) return;
+            if (st.phase === 'day_voting' && st.votes[bp.index] === undefined) {
                 const faction = MAFIA_ROLE_LABELS[p.role]?.faction;
                 let t;
                 if (faction === 'mafia') {

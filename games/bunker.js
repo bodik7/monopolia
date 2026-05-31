@@ -782,15 +782,15 @@ function processBunkerAction(room, type, data, pidx) {
 
         case 'b_vote': {
             if (s.phase !== 'voting') break;
-            if (s.votes[pidx] !== undefined) break;
-            if (s.quarantined?.includes(pidx)) break;
+            if (s.votes[p.id] !== undefined) break;
+            if (s.quarantined?.includes(p.id)) break;
             const { target } = data;
             if (typeof target !== 'number') break;
             const targetP = s.players[target];
-            if (!targetP?.isAlive || target === pidx) break;
+            if (!targetP?.isAlive || target === p.id) break;
             if (s.tiebreaker && !s.tiebreaker.includes(target)) break;
 
-            s.votes[pidx] = target;
+            s.votes[p.id] = target;
             addBunkerLog(s, `🗳️ ${p.name} проголосував(ла)`);
 
             const aliveIds  = s.players.filter(pl => pl.isAlive && !s.quarantined?.includes(pl.id)).map(pl => pl.id);

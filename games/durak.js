@@ -117,7 +117,9 @@ function processDurakAction(state, type, data, pidx) {
             } else {
                 if(!cards.every(c=>tableRanks.has(dRank(c)))) break;
             }
-            const defHand = state.players[state.defender].hand.length;
+            const defender = state.players[state.defender];
+            if (!defender) break;
+            const defHand = defender.hand.length;
             const unbeaten = state.table.filter(t=>!t.defense).length;
             if(unbeaten+cards.length > defHand) break;
             if(state.table.length+cards.length > 6) break;
