@@ -532,6 +532,8 @@ function processAction(state, type, data, room) {
             addLog(state, `✅ ${from.name} і ${to.name} уклали угоду!`, 'success');
             state._toast = { text: `🤝 ${from.name} і ${to.name} обмінялись!`, color: '#1565c0' };
             state.pendingTrade = null;
+            checkForcedDebt(state, from);
+            if (!state.pendingAction) checkForcedDebt(state, to);
             break;
         }
         case 'rejectTrade': {

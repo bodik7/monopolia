@@ -32,7 +32,8 @@ setInterval(() => {
 
 function apiLimiter(max, windowMs) {
     return (req, res, next) => {
-        const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket.remoteAddress || 'unknown';
+        const forwarded = req.headers['x-forwarded-for'];
+        const ip = (forwarded ? forwarded.split(',').at(-1).trim() : null) || req.socket.remoteAddress || 'unknown';
         if (!rateLimit(`api:${ip}`, max, windowMs))
             return res.status(429).json({ error: 'Занадто багато запитів. Спробуйте пізніше.' });
         next();
