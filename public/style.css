@@ -2731,3 +2731,113 @@ body {
     animation: lb-shimmer 1.4s infinite linear;
     flex-shrink: 0;
 }
+
+/* ══════════════════════════════════════════
+   AUTH SCREEN — декоративні бокові панелі
+   ══════════════════════════════════════════ */
+.auth-decor {
+    display: none;
+}
+@media (min-width: 1100px) {
+    #auth-screen {
+        position: relative;
+    }
+    .auth-decor {
+        display: block;
+        position: absolute;
+        top: 0; bottom: 0;
+        width: 280px;
+        pointer-events: none;
+    }
+    .auth-decor-left  { left:  0; }
+    .auth-decor-right { right: 0; }
+    .auth-float-card {
+        position: absolute;
+        left: var(--x, 10%);
+        top:  var(--y, 20%);
+        transform: rotate(var(--r, 0deg));
+        background: rgba(255,255,255,0.05);
+        border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 18px;
+        padding: 18px 22px;
+        text-align: center;
+        backdrop-filter: blur(6px);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        width: 110px;
+        animation: float-card 6s ease-in-out infinite;
+        animation-delay: calc(var(--y, 0%) * 0.1s);
+    }
+    .auth-float-card:nth-child(2) { animation-delay: 2s; }
+    .auth-float-card:nth-child(3) { animation-delay: 4s; }
+    .auth-float-card > :first-child {
+        font-size: 36px;
+        line-height: 1;
+        filter: drop-shadow(0 2px 8px rgba(0,87,183,0.4));
+    }
+    .auth-float-card span {
+        font-size: 11px;
+        font-weight: 700;
+        color: rgba(255,255,255,0.5);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    @keyframes float-card {
+        0%, 100% { transform: rotate(var(--r, 0deg)) translateY(0px); }
+        50%       { transform: rotate(var(--r, 0deg)) translateY(-10px); }
+    }
+}
+
+/* ══════════════════════════════════════════
+   GAME CARDS — покращений контраст
+   ══════════════════════════════════════════ */
+@media (min-width: 900px) {
+    .game-card {
+        background: rgba(255,255,255,0.07);
+        border-color: rgba(255,255,255,0.14);
+    }
+    .game-card:hover {
+        background: rgba(255,255,255,0.12);
+        border-color: rgba(255,255,255,0.28);
+        box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+    }
+    .game-card-desc {
+        font-size: 12px;
+        color: rgba(255,255,255,0.55);
+    }
+    /* Кольорові підсвічування карток по іграх */
+    #game-btn-monopoly:not(.active):hover { border-color: rgba(255,215,0,0.4); }
+    #game-btn-tysyacha:not(.active):hover { border-color: rgba(0,180,255,0.4); }
+    #game-btn-mafia:not(.active):hover    { border-color: rgba(220,50,50,0.4); }
+    #game-btn-durak:not(.active):hover    { border-color: rgba(80,200,80,0.4); }
+    #game-btn-bunker:not(.active):hover   { border-color: rgba(180,100,40,0.4); }
+}
+
+/* ══════════════════════════════════════════
+   ACCOUNT NAME — обрізка довгих імен
+   ══════════════════════════════════════════ */
+#account-name {
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: inline-block;
+    vertical-align: middle;
+}
+@media (max-width: 520px) {
+    #account-name { max-width: 90px; }
+}
+
+/* ══════════════════════════════════════════
+   CABINET AVATAR — більший розмір
+   ══════════════════════════════════════════ */
+.cab-avatar {
+    width: 110px !important;
+    height: 110px !important;
+    font-size: 44px !important;
+}
+@media (max-width: 600px) {
+    .cab-avatar { width: 80px !important; height: 80px !important; font-size: 32px !important; }
+}

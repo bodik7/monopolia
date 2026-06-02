@@ -23,6 +23,11 @@
 
     <!-- ===== ЕКРАН АВТОРИЗАЦІЇ ===== -->
     <div id="auth-screen" class="lobby-screen">
+        <div class="auth-decor auth-decor-left" aria-hidden="true">
+            <div class="auth-float-card" style="--r:-18deg;--y:10%;--x:10%">🏦<span>Монополія</span></div>
+            <div class="auth-float-card" style="--r:12deg;--y:45%;--x:5%">🃏<span>Тисяча</span></div>
+            <div class="auth-float-card" style="--r:-8deg;--y:75%;--x:15%">🂡<span>Дурак</span></div>
+        </div>
         <div class="lobby-wrapper">
 
             <div class="lobby-header">
@@ -73,6 +78,11 @@
                 </button>
 
             </div>
+        </div>
+        <div class="auth-decor auth-decor-right" aria-hidden="true">
+            <div class="auth-float-card" style="--r:15deg;--y:8%;--x:30%">🔫<span>Мафія</span></div>
+            <div class="auth-float-card" style="--r:-10deg;--y:42%;--x:50%">🏚️<span>Бункер</span></div>
+            <div class="auth-float-card" style="--r:20deg;--y:72%;--x:20%">🎲<span>Грай зараз</span></div>
         </div>
     </div>
 
@@ -823,7 +833,11 @@
             try {
                 const rows = await fetch(`/api/leaderboard/${gameType}`).then(r => r.json());
                 if (!rows.length) {
-                    list.innerHTML = '<div style="text-align:center;color:rgba(255,255,255,0.25);padding:20px;font-size:13px">Ще немає результатів</div>';
+                    list.innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;gap:10px;padding:36px 20px;text-align:center">
+                        <div style="font-size:44px;filter:grayscale(0.3)">🏆</div>
+                        <div style="font-size:14px;font-weight:700;color:rgba(255,255,255,0.5)">Ще ніхто не зіграв</div>
+                        <div style="font-size:12px;color:rgba(255,255,255,0.25);max-width:200px;line-height:1.5">Перший матч увійде в історію. Починай прямо зараз!</div>
+                    </div>`;
                     return;
                 }
                 const medals = ['🥇','🥈','🥉'];
