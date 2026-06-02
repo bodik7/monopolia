@@ -102,7 +102,7 @@ module.exports = function registerSocketHandlers(io, roomStore, gameCtx) {
         socket.on('createRoom', ({ playerName, gameType = 'monopoly' }, cb) => {
             if (!isStr(playerName, 30)) return;
             const code  = generateCode();
-            const gtype = ['tysyacha','mafia','durak','bunker','monopoly'].includes(gameType) ? gameType : 'monopoly';
+            const gtype = ['tysyacha','mafia','durak','bunker','monopoly','spy'].includes(gameType) ? gameType : 'monopoly';
             const room  = {
                 code,
                 players: [{ socketId: socket.id, name: playerName, index: 0, username: socket.username || null, avatarId: socket.avatarId || null, avatarColor: socket.avatarColor || '#1a56db' }],
@@ -123,7 +123,7 @@ module.exports = function registerSocketHandlers(io, roomStore, gameCtx) {
             if (!isStr(code, 20)) return cb({ error: 'not_found' });
             const room = roomStore.get(code.toUpperCase());
             if (!room) return cb({ error: 'not_found' });
-            const maxPlayers = { tysyacha: 3, mafia: 15, durak: 6, bunker: 15, monopoly: 6 }[room.gameType] || 6;
+            const maxPlayers = { tysyacha: 3, mafia: 15, durak: 6, bunker: 15, monopoly: 6, spy: 10 }[room.gameType] || 6;
             cb({ players: room.players.length, max: maxPlayers, gameType: room.gameType, started: room.started });
         });
 
@@ -132,7 +132,7 @@ module.exports = function registerSocketHandlers(io, roomStore, gameCtx) {
             const room = roomStore.get(code);
             if (!room)        return cb({ error: 'Кімнату не знайдено' });
             if (room.started) return cb({ error: 'Гра вже почалась' });
-            const maxPlayers = { tysyacha: 3, mafia: 15, durak: 6, bunker: 15, monopoly: 6 }[room.gameType] || 6;
+            const maxPlayers = { tysyacha: 3, mafia: 15, durak: 6, bunker: 15, monopoly: 6, spy: 10 }[room.gameType] || 6;
             if (room.players.length >= maxPlayers) return cb({ error: `Кімната повна (макс ${maxPlayers})` });
             const idx = room.players.length;
             room.players.push({ socketId: socket.id, name: playerName, index: idx, username: socket.username || null, avatarId: socket.avatarId || null, avatarColor: socket.avatarColor || '#1a56db' });

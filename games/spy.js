@@ -66,9 +66,10 @@ function sanitizeSpy(state, forIdx) {
     return {
         gameType:      'spy',
         phase:         state.phase,
-        locationEmoji: state.phase === 'result' || state.revealedSpy
+        // Мирні завжди бачать локацію; шпигун — тільки в кінці
+        locationEmoji: (!me?.isSpy || state.phase === 'result' || state.revealedSpy)
             ? state.locationEmoji : null,
-        locationName:  state.phase === 'result' || state.revealedSpy
+        locationName:  (!me?.isSpy || state.phase === 'result' || state.revealedSpy)
             ? state.location : null,
         allLocations:  state.allLocations,
         // Власна роль і чи є шпигун — тільки свої дані
@@ -232,7 +233,9 @@ function endGame(room, winner, reason) {
 function processSpyAction(room, type, data, pidx) {
     const s = room.state;
     const p = s.players[pidx];
-    if (!p || !p.isAlive) return;
+    if (!p) return;
+    // spy_location_guess дозволено навіть після "вибуття" (фаза spy_guess)
+    if (!p.isAlive && type !== 'spy_location_guess') return;
 
     switch (type) {
 
