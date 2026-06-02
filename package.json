@@ -8,6 +8,7 @@
     "dev": "nodemon server.js",
     "test": "node tests/test-units.js",
     "test:socket": "node tests/test-socket.js",
+    "test:spy": "NODE_ENV=test node tests/test-spy.js && NODE_ENV=test node tests/test-spy-extended.js",
     "test:all": "node tests/test-units.js && node tests/test-socket.js"
   },
   "dependencies": {

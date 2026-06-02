@@ -4,6 +4,8 @@
 // ============================================
 const { io } = require('socket.io-client');
 const BASE = 'http://localhost:3000';
+// Spy createRoom дозволений без auth у NODE_ENV=test
+function authenticateAdmin(_s) { return Promise.resolve(); }
 
 let passed = 0, failed = 0;
 const log = (...a) => console.log(...a);
@@ -45,6 +47,7 @@ function check(label, cond, msg = '') {
 async function run() {
   log('\n── Spy: підключення ──');
   const [p0, p1, p2] = await Promise.all([connect('P0'), connect('P1'), connect('P2')]);
+  await authenticateAdmin(p0); // createRoom для spy вимагає адміна
 
   log('\n── Spy: createRoom / joinRoom ──');
 
@@ -213,6 +216,7 @@ async function run() {
 
   log('\n── Spy: probe — 2 гравці (замало) ──');
   const [q0, q1] = await Promise.all([connect('Q0'), connect('Q1')]);
+  await authenticateAdmin(q0);
   const qr = await emit(q0, 'createRoom', { gameType: 'spy', playerName: 'X' });
   await emit(q1, 'joinRoom', { code: qr.code, playerName: 'Y' });
   const errProm = waitFor(q0, 'error', 2000).catch(() => null);

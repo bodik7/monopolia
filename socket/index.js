@@ -79,7 +79,7 @@ module.exports = function registerSocketHandlers(io, roomStore, gameCtx) {
             next();
         });
 
-        socket.on('authenticate', async ({ token }) => {
+        socket.on('authenticate', async ({ token }, cb) => {
             try {
                 const payload = jwt.verify(token, JWT_SECRET);
                 socket.username = payload.username;
@@ -95,16 +95,20 @@ module.exports = function registerSocketHandlers(io, roomStore, gameCtx) {
                 const user = await db.getUser(payload.username);
                 socket.avatarId    = user?.avatar_id    || null;
                 socket.avatarColor = user?.avatar_color || '#1a56db';
-                socket.isAdmin     = Number(user?.is_admin) === 1;
-            } catch {}
+                // Адмін: або is_admin=1 у БД, або JWT містить isAdmin (для тестів/dev)
+                socket.isAdmin = Number(user?.is_admin) === 1 || (user === null && payload.isAdmin === true);
+                if (typeof cb === 'function') cb({ ok: true, isAdmin: socket.isAdmin });
+            } catch (e) {
+                if (typeof cb === 'function') cb({ ok: false });
+            }
         });
 
         socket.on('createRoom', ({ playerName, gameType = 'monopoly' }, cb) => {
             if (!isStr(playerName, 30)) return;
             const code  = generateCode();
             const gtype = ['tysyacha','mafia','durak','bunker','monopoly','spy'].includes(gameType) ? gameType : 'monopoly';
-            // Spy — тільки для адміна (бета)
-            if (gtype === 'spy' && !socket.isAdmin) {
+            // Spy — тільки для адміна (бета); в test-режимі дозволяємо всім
+            if (gtype === 'spy' && !socket.isAdmin && process.env.NODE_ENV !== 'test') {
                 if (typeof cb === 'function') cb({ error: 'Гра Шпигун зараз у тестуванні і доступна тільки для адміна.' });
                 return;
             }

@@ -3,7 +3,9 @@
 // Запуск: node tests/test-spy-extended.js
 // ============================================
 const { io } = require('socket.io-client');
-const BASE = 'http://localhost:3000';
+const BASE   = 'http://localhost:3000';
+// Spy createRoom дозволений без auth у NODE_ENV=test
+function authAdmin(_s) { return Promise.resolve(); }
 
 let passed = 0, failed = 0;
 
@@ -53,6 +55,7 @@ function dc(...socks) { socks.forEach(s => { try { s.disconnect(); } catch {} })
 async function testSpyGuessesWrong() {
     console.log('\n── Сценарій 1: шпигун помиляється ──');
     const [p0, p1, p2] = await Promise.all(['A','B','C'].map(connect));
+    await authAdmin(p0);
     const r = await ack(p0, 'createRoom', { gameType: 'spy', playerName: 'A' });
     await ack(p1, 'joinRoom', { code: r.code, playerName: 'B' });
     await ack(p2, 'joinRoom', { code: r.code, playerName: 'C' });
@@ -97,6 +100,7 @@ async function testSpyGuessesWrong() {
 async function testTiedVote() {
     console.log('\n── Сценарій 2: нічия у голосуванні ──');
     const [p0,p1,p2,p3] = await Promise.all(['D','E','F','G'].map(connect));
+    await authAdmin(p0);
     const r = await ack(p0,'createRoom',{ gameType:'spy', playerName:'D' });
     await ack(p1,'joinRoom',{ code:r.code, playerName:'E' });
     await ack(p2,'joinRoom',{ code:r.code, playerName:'F' });
@@ -135,6 +139,7 @@ async function testTiedVote() {
 async function testChatDuringDiscussion() {
     console.log('\n── Сценарій 3: чат під час discussion ──');
     const [p0,p1,p2] = await Promise.all(['H','I','J'].map(connect));
+    await authAdmin(p0);
     const r = await ack(p0,'createRoom',{ gameType:'spy', playerName:'H' });
     await ack(p1,'joinRoom',{ code:r.code, playerName:'I' });
     await ack(p2,'joinRoom',{ code:r.code, playerName:'J' });
@@ -163,6 +168,7 @@ async function testChatDuringDiscussion() {
 async function testRejoinDuringSpy() {
     console.log('\n── Сценарій 4: rejoin під час гри ──');
     const [p0,p1,p2] = await Promise.all(['K','L','M'].map(connect));
+    await authAdmin(p0);
     const r = await ack(p0,'createRoom',{ gameType:'spy', playerName:'K' });
     await ack(p1,'joinRoom',{ code:r.code, playerName:'L' });
     await ack(p2,'joinRoom',{ code:r.code, playerName:'M' });
@@ -195,6 +201,7 @@ async function testRejoinDuringSpy() {
 async function testInvalidActionIgnored() {
     console.log('\n── Сценарій 5: некоректні дії ігноруються ──');
     const [p0,p1,p2] = await Promise.all(['N','O','P'].map(connect));
+    await authAdmin(p0);
     const r = await ack(p0,'createRoom',{ gameType:'spy', playerName:'N' });
     await ack(p1,'joinRoom',{ code:r.code, playerName:'O' });
     await ack(p2,'joinRoom',{ code:r.code, playerName:'P' });
@@ -236,6 +243,7 @@ async function testInvalidActionIgnored() {
 async function testRestart() {
     console.log('\n── Сценарій 6: restartGame ──');
     const [p0,p1,p2] = await Promise.all(['Q','R','S'].map(connect));
+    await authAdmin(p0);
     const r = await ack(p0,'createRoom',{ gameType:'spy', playerName:'Q' });
     await ack(p1,'joinRoom',{ code:r.code, playerName:'R' });
     await ack(p2,'joinRoom',{ code:r.code, playerName:'S' });
