@@ -1335,6 +1335,11 @@ socket.on('gameStarted', ({ state, gameType, myPlayerIndex: mpi }) => {
         return;
     }
     showGameScreen();
+    closeModal();
+    clearInterval(window._tradeCountdownInterval);
+    window._loanMenuOpen   = false;
+    window._pendingCardPos = null;
+    if (state.players) state.players.forEach(p => { _prevPos[p.id] = p.position; });
     applyState(state, false, null, null);
     log(`🎮 Гра почалась! Хід: ${state.players[0].name}`, 'success');
 });

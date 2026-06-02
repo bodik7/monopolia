@@ -5,7 +5,10 @@ const jwt = require('jsonwebtoken');
 const db  = require('../db');
 const { JWT_SECRET }       = require('../config');
 const { rateLimit }        = require('../middleware/auth');
-const makeGameActionHandler = require('./gameActions');
+const makeGameActionHandler   = require('./gameActions');
+const makeGameLifecycleHandlers = require('./handlers/gameLifecycle');
+const makeDisconnectHandler     = require('./handlers/disconnect');
+const makeReconnectHandlers     = require('./handlers/reconnect');
 
 const _activeSessions = new Map();
 
@@ -59,6 +62,10 @@ module.exports = function registerSocketHandlers(io, roomStore, gameCtx) {
             if (s) s.emit('lobbyUpdate', { ...payload, myIndex: p.index });
         });
     }
+
+    const { handleStartGame, handleRestartGame } = makeGameLifecycleHandlers(io, roomStore, gameCtx);
+    const handleDisconnect   = makeDisconnectHandler(io, roomStore, db, gameCtx);
+    const { handleRejoin, handleSyncState, handleSpectatorJoin } = makeReconnectHandlers(io, roomStore, gameCtx);
 
     io.on('connection', (socket) => {
         console.log('+ підключення:', socket.id);
@@ -390,122 +397,8 @@ module.exports = function registerSocketHandlers(io, roomStore, gameCtx) {
             emitLobbyUpdate(room);
         });
 
-        socket.on('startGame', ({ settings } = {}) => {
-            const room = roomStore.get(socket.roomCode);
-            if (!room || socket.playerIndex !== 0) return;
-
-            if (room.gameType === 'mafia') {
-                const n = room.players.length;
-                if (!MAFIA_BALANCE[n]) return io.to(socket.id).emit('error', `Мафія: потрібно 5–15 гравців (зараз ${n})`);
-                room.started = true;
-                if (settings) room.settings = { ...(room.settings || {}), ...settings };
-                room.state = createMafiaState(room.players, room.settings || {});
-                const mafiaIds = room.state.mafiaIds;
-                room.players.forEach(rp => {
-                    if (!rp.socketId) return;
-                    const s = io.sockets.sockets.get(rp.socketId);
-                    if (s && mafiaIds.includes(rp.index)) s.join(`${room.code}_mafia`);
-                    io.to(rp.socketId).emit('gameStarted', { state: sanitizeMafia(room.state, rp.index), myPlayerIndex: rp.index, gameType: 'mafia' });
-                });
-                getMafiaBotDecisions(room);
-                setTimeout(() => { if (room.state?.phase === 'role_reveal') startNightPhase(room); }, 25000);
-            } else if (room.gameType === 'durak') {
-                const n = room.players.length;
-                if (n < 2 || n > 6) return io.to(socket.id).emit('error', 'Дурак: потрібно 2–6 гравців');
-                room.started = true;
-                if (settings) room.settings = { ...(room.settings || {}), ...settings };
-                room.state = createDurakState(room.players, room.settings || {});
-                dStartTurnTimer(room);
-                room.players.forEach(rp => { io.to(rp.socketId).emit('gameStarted', { state: sanitizeDurak(room.state, rp.index), myPlayerIndex: rp.index, gameType: 'durak' }); });
-            } else if (room.gameType === 'tysyacha') {
-                if (room.players.length < 2 || room.players.length > 3) return io.to(socket.id).emit('error', 'Тисяча: потрібно 2 або 3 гравці');
-                room.started = true;
-                room.state = createTysyachaState(room.players);
-                room.players.forEach(rp => { io.to(rp.socketId).emit('gameStarted', { state: sanitizeTysyacha(room.state, rp.index), myPlayerIndex: rp.index, gameType: 'tysyacha' }); });
-                startTysyachaTimer(room);
-            } else if (room.gameType === 'bunker') {
-                const n = room.players.length;
-                if (n < 4 || n > 15) return io.to(socket.id).emit('error', 'Бункер: потрібно 4–15 гравців');
-                room.started = true;
-                if (settings) room.settings = { ...(room.settings || {}), ...settings };
-                room.state = createBunkerState(room.players, room.settings || {});
-                room.players.forEach(rp => { io.to(rp.socketId).emit('gameStarted', { state: sanitizeBunker(room.state, rp.index), myPlayerIndex: rp.index, gameType: 'bunker' }); });
-                startBunkerPhase(room, 'game_start');
-            } else {
-                if (room.players.length < 2) return io.to(socket.id).emit('error', 'Потрібно мінімум 2 гравці');
-                room.started = true;
-                room.state = createGameState(room.players);
-                addLog(room.state, `🎮 Гра почалась! Перший хід: ${room.state.players[0].name}`, 'success');
-                startTurnTimer(room);
-                io.to(socket.roomCode).emit('gameStarted', { state: sanitize(room.state), gameType: 'monopoly' });
-            }
-        });
-
-        socket.on('restartGame', () => {
-            const room = roomStore.get(socket.roomCode);
-            if (!room) return;
-
-            // Voting: host can restart immediately; others add a vote
-            if (socket.playerIndex !== 0) {
-                if (!room.restartVotes) room.restartVotes = new Set();
-                room.restartVotes.add(socket.playerIndex);
-                const needed = Math.ceil(room.players.length / 2);
-                io.to(socket.roomCode).emit('restartVoteUpdate', {
-                    votes: room.restartVotes.size,
-                    total: room.players.length,
-                    needed,
-                });
-                if (room.restartVotes.size < needed) return;
-                room.restartVotes.clear();
-            } else {
-                if (room.restartVotes) room.restartVotes.clear();
-            }
-
-            // Скидаємо AFK-таймери з попередньої гри
-            if (room.afkTimers) {
-                Object.values(room.afkTimers).forEach(t => clearTimeout(t));
-                room.afkTimers = {};
-            }
-
-            const gameType = room.state?.gameType || room.gameType;
-            if (gameType === 'durak') {
-                room.state = createDurakState(room.players, room.settings || {});
-                room.started = true;
-                dStartTurnTimer(room);
-                room.players.forEach(rp => { io.to(rp.socketId).emit('gameStarted', { state: sanitizeDurak(room.state, rp.index), myPlayerIndex: rp.index, gameType: 'durak' }); });
-            } else if (gameType === 'tysyacha') {
-                clearTysyachaTimer(room);
-                room.state = createTysyachaState(room.players);
-                room.started = true;
-                room.players.forEach(rp => { io.to(rp.socketId).emit('gameStarted', { state: sanitizeTysyacha(room.state, rp.index), myPlayerIndex: rp.index, gameType: 'tysyacha' }); });
-                startTysyachaTimer(room);
-            } else if (gameType === 'mafia') {
-                clearTimeout(room.nightTimer); clearTimeout(room.dayTimer);
-                clearTimeout(room.voteTimer);  clearTimeout(room.morningTimer);
-                room.state = createMafiaState(room.players, room.settings || {});
-                room.started = true;
-                const mafiaIds = room.state.mafiaIds;
-                room.players.forEach(rp => {
-                    if (!rp.socketId) return;
-                    const s = io.sockets.sockets.get(rp.socketId);
-                    if (s && mafiaIds.includes(rp.index)) s.join(`${room.code}_mafia`);
-                    io.to(rp.socketId).emit('gameStarted', { state: sanitizeMafia(room.state, rp.index), myPlayerIndex: rp.index, gameType: 'mafia' });
-                });
-                setTimeout(() => { if (room.state?.phase === 'role_reveal') startNightPhase(room); }, 25000);
-            } else if (gameType === 'bunker') {
-                clearBunkerTimer(room);
-                room.state = createBunkerState(room.players, room.settings || {});
-                room.started = true;
-                room.players.forEach(rp => { io.to(rp.socketId).emit('gameStarted', { state: sanitizeBunker(room.state, rp.index), myPlayerIndex: rp.index, gameType: 'bunker' }); });
-                startBunkerPhase(room, 'game_start');
-            } else {
-                room.state = createGameState(room.players);
-                addLog(room.state, `🎮 Реванш! Перший хід: ${room.state.players[0].name}`, 'success');
-                room.started = true;
-                startTurnTimer(room);
-                io.to(socket.roomCode).emit('gameStarted', { state: sanitize(room.state), gameType: 'monopoly' });
-            }
-        });
+        socket.on('startGame',   ({ settings } = {}) => handleStartGame(socket, settings));
+        socket.on('restartGame', ()                   => handleRestartGame(socket));
 
         socket.on('action', ({ type, data }) => {
             if (!isStr(type, 50)) return;
@@ -516,76 +409,9 @@ module.exports = function registerSocketHandlers(io, roomStore, gameCtx) {
             handleGameAction(room, type, data || {}, socket.playerIndex, socket.id);
         });
 
-        socket.on('rejoin', ({ code, playerIndex, playerName }, cb) => {
-            if (!isStr(code, 20) || typeof playerIndex !== 'number' || !isStr(playerName, 30))
-                return cb({ error: 'Невірні дані' });
-            const room = roomStore.get(code);
-            if (!room) return cb({ error: 'Кімнату не знайдено (можливо сервер перезапускався)' });
-            const rp = room.players.find(p => p.index === playerIndex && p.name === playerName);
-            if (!rp) return cb({ error: 'Гравця не знайдено в кімнаті' });
-            rp.socketId = socket.id;
-            socket.join(code);
-            socket.roomCode    = code;
-            socket.playerIndex = playerIndex;
-            if (room.afkTimers?.[playerIndex] !== undefined) {
-                clearTimeout(room.afkTimers[playerIndex]);
-                delete room.afkTimers[playerIndex];
-            }
-            if (room.state?.gameType === 'bunker') {
-                const sp = room.state.players[playerIndex];
-                if (sp) sp.isOnline = true;
-            }
-            if (room.started && room.state) {
-                if (room.state.gameType === 'mafia') {
-                    const mafiaIds = room.state.mafiaIds || [];
-                    if (mafiaIds.includes(playerIndex)) socket.join(`${code}_mafia`);
-                }
-                const st = room.state.gameType === 'tysyacha' ? sanitizeTysyacha(room.state, playerIndex)
-                         : room.state.gameType === 'mafia'    ? sanitizeMafia(room.state, playerIndex)
-                         : room.state.gameType === 'durak'    ? sanitizeDurak(room.state, playerIndex)
-                         : room.state.gameType === 'bunker'   ? sanitizeBunker(room.state, playerIndex)
-                         : sanitize(room.state);
-                cb({ success: true, started: true, state: st, gameType: room.gameType });
-                io.to(code).emit('playerReconnected', { playerIndex });
-                if (room.state.gameType === 'bunker') emitBunkerUpdate(room);
-            } else {
-                cb({ success: true, started: false, players: room.players.map(p => p.name), bots: room.players.map(p => p.isBot || false) });
-                emitLobbyUpdate(room);
-            }
-        });
-
-        socket.on('syncState', (cb) => {
-            if (typeof cb !== 'function') return;
-            const room = socket.roomCode ? roomStore.get(socket.roomCode) : null;
-            if (!room?.started || !room.state) return cb({ error: 'no_state' });
-            const pidx = socket.playerIndex;
-            const st = room.state.gameType === 'tysyacha' ? sanitizeTysyacha(room.state, pidx)
-                     : room.state.gameType === 'mafia'    ? sanitizeMafia(room.state, pidx)
-                     : room.state.gameType === 'durak'    ? sanitizeDurak(room.state, pidx)
-                     : room.state.gameType === 'bunker'   ? sanitizeBunker(room.state, pidx)
-                     : sanitize(room.state);
-            cb({ state: st });
-        });
-
-        socket.on('spectatorJoin', ({ code }, cb) => {
-            if (!isStr(code, 20)) return cb({ error: 'not_found' });
-            const room = roomStore.get(code.toUpperCase());
-            if (!room) return cb({ error: 'not_found' });
-            if (!room.started || !room.state) return cb({ error: 'Гра ще не почалась' });
-            socket.join(code.toUpperCase());
-            socket.roomCode    = code.toUpperCase();
-            socket.playerIndex = null;
-            socket.isSpectator = true;
-            if (!room.spectators) room.spectators = new Set();
-            room.spectators.add(socket.id);
-            const st = room.gameType === 'mafia'    ? sanitizeMafia(room.state, -1)
-                     : room.gameType === 'tysyacha' ? sanitizeTysyacha(room.state, -1)
-                     : room.gameType === 'durak'    ? sanitizeDurak(room.state, -1)
-                     : room.gameType === 'bunker'   ? sanitizeBunker(room.state, -1)
-                     : sanitize(room.state);
-            io.to(code.toUpperCase()).emit('spectatorJoined', { name: socket.username || 'Глядач' });
-            cb({ success: true, state: st, gameType: room.gameType });
-        });
+        socket.on('rejoin',       (data, cb) => handleRejoin(socket, data, cb, emitLobbyUpdate));
+        socket.on('syncState',    (cb)       => handleSyncState(socket, cb));
+        socket.on('spectatorJoin',(data, cb) => handleSpectatorJoin(socket, data, cb));
 
         socket.on('emojiReaction', ({ emoji }) => {
             if (!socket.roomCode) return;
@@ -628,130 +454,7 @@ module.exports = function registerSocketHandlers(io, roomStore, gameCtx) {
             io.to(socket.roomCode).emit('lobbyMsg', { name, text: esc(String(text || '').slice(0, 200)) });
         });
 
-        socket.on('disconnect', () => {
-            console.log('- відключення:', socket.id);
-            if (socket.username && _activeSessions.get(socket.username) === socket.id)
-                _activeSessions.delete(socket.username);
-            const room = roomStore.get(socket.roomCode);
-            if (!room) return;
-            if (socket.isSpectator) {
-                room.spectators?.delete(socket.id);
-                socket.leave(socket.roomCode);
-                socket.roomCode = null;
-                socket.isSpectator = false;
-                return;
-            }
-            if (room.state?.auctionState) {
-                const a = room.state.auctionState;
-                a.active = a.active.filter(id => id !== socket.playerIndex);
-                if (a.active.length === 0) {
-                    addLog(room.state, '🔨 Аукціон скасовано — всі відключились', 'warn');
-                    room.state.auctionState = null;
-                } else if (a.active.length === 1) {
-                    if (a.currentBidder === null) a.currentBidder = a.active[0];
-                    awardAuction(room.state, a);
-                }
-                io.to(socket.roomCode).emit('stateUpdate', { state: sanitize(room.state), sideEffect: null });
-            }
-            if (room.state?.pendingTrade?.toIdx === socket.playerIndex) {
-                clearTradeTimer(room);
-                room.state.pendingTrade = null;
-                room.state.tradeDeadline = null;
-                startTurnTimer(room);
-                io.to(socket.roomCode).emit('stateUpdate', {
-                    state: sanitize(room.state), sideEffect: null,
-                    toast: { text: '🚪 Отримувач угоди відключився — угоду скасовано', color: '#e65100' },
-                });
-            }
-            io.to(socket.roomCode).emit('playerDisconnected', { playerIndex: socket.playerIndex });
-
-            const _emptyCheckCode = socket.roomCode;
-            // Для bunker-кімнат що ще не почались — більше часу,
-            // бо хост може переходити на /bunker/ (page reload + reconnect)
-            const _emptyDelay = room.started ? 300_000
-                               : room.gameType === 'bunker' ? 12_000
-                               : 0;
-            setTimeout(() => {
-                const r = roomStore.get(_emptyCheckCode);
-                if (!r) return;
-                if (r.started && r.state?.gameType === 'bunker') return;
-                const connectedHumans = r.players.filter(p => {
-                    if (p.isBot || !p.socketId) return false;
-                    const s = io.sockets.sockets.get(p.socketId);
-                    return s && s.roomCode === r.code;
-                });
-                if (connectedHumans.length === 0) {
-                    if (r.started) {
-                        clearTurnTimer(r); clearTradeTimer(r);
-                        clearTimeout(r.nightTimer); clearTimeout(r.dayTimer);
-                        clearTimeout(r.voteTimer);
-                        db.deleteRoom(r.code);
-                    }
-                    roomStore.delete(_emptyCheckCode);
-                    console.log(`🗑️  Кімната ${_emptyCheckCode} видалена (порожня)`);
-                }
-            }, _emptyDelay);
-
-            // Bunker: reconnect grace + AFK auto-action
-            const rp = room.players.find(p => p.index === socket.playerIndex);
-            if (room.started && room.state?.gameType === 'bunker' && !rp?.isBot) {
-                const pidx     = socket.playerIndex;
-                const roomCode = socket.roomCode;
-                const sp = room.state.players[pidx];
-                if (sp) sp.isOnline = false;
-                emitBunkerUpdate(room);
-                room.afkTimers = room.afkTimers || {};
-                clearTimeout(room.afkTimers[pidx]);
-                room.afkTimers[pidx] = setTimeout(() => {
-                    const r = roomStore.get(roomCode);
-                    if (!r?.state) return;
-                    const st  = r.state;
-                    const rp2 = r.players.find(p => p.index === pidx);
-                    if (rp2?.socketId && io.sockets.sockets.get(rp2.socketId)) return;
-                    const player = st.players[pidx];
-                    if (!player?.isAlive) return;
-                    if (st.phase === 'round_reveal' && !player.hasRevealed) {
-                        const attr = Object.keys(player.attributes).find(k => !player.attributes[k].isRevealed);
-                        if (attr) {
-                            player.attributes[attr].isRevealed = true;
-                            addBunkerLog(st, `⏱️ ${player.name} розкриває ${BUNKER_ATTR_LABELS[attr]} (AFK)`);
-                        }
-                        // Завжди позначаємо готовим — навіть якщо всі атрибути вже були відкриті
-                        player.hasRevealed = true;
-                        const allRevealed = st.players.filter(pl => pl.isAlive).every(pl => pl.hasRevealed);
-                        if (allRevealed) { clearBunkerTimer(r); startBunkerPhase(r, 'discussion'); }
-                        else emitBunkerUpdate(r);
-                    } else if (st.phase === 'game_start' && !player.hasRevealed) {
-                        player.hasRevealed = true;
-                        addBunkerLog(st, `✅ ${player.name} готовий (AFK)`);
-                        const allReady = st.players.every(pl => pl.hasRevealed);
-                        if (allReady) {
-                            st.players.forEach(pl => { pl.hasRevealed = false; });
-                            clearBunkerTimer(r);
-                            startBunkerRound(r);
-                        } else emitBunkerUpdate(r);
-                    } else if (st.phase === 'voting' && st.votes[pidx] === undefined && !st.quarantined?.includes(pidx)) {
-                        const candidates = st.players.filter(pl => pl.isAlive && pl.id !== pidx && (!st.tiebreaker || st.tiebreaker.includes(pl.id)));
-                        if (candidates.length > 0) {
-                            const target = candidates[Math.floor(Math.random() * candidates.length)];
-                            st.votes[pidx] = target.id;
-                            addBunkerLog(st, `⏱️ ${player.name} голосує (AFK)`);
-                            const aliveIds = st.players.filter(pl => pl.isAlive && !st.quarantined?.includes(pl.id)).map(pl => pl.id);
-                            const allVoted = aliveIds.every(id => st.votes[id] !== undefined);
-                            if (allVoted) { clearBunkerTimer(r); resolveBunkerVoting(r); }
-                            else emitBunkerUpdate(r);
-                        }
-                    }
-                }, 30_000);
-
-                setTimeout(() => {
-                    const r = roomStore.get(roomCode);
-                    if (!r) return;
-                    const connectedHumans = r.players.filter(p => !p.isBot && p.socketId && io.sockets.sockets.get(p.socketId));
-                    if (connectedHumans.length === 0) { clearBunkerTimer(r); roomStore.delete(roomCode); }
-                }, 60_000);
-            }
-        });
+        socket.on('disconnect', () => handleDisconnect(socket, _activeSessions));
     });
 
     return { generateCode };
