@@ -439,6 +439,9 @@ function tryRejoin() {
         }
         myPlayerIndex = playerIndex;
         if (started && state) {
+            // Bunker і Spy — окремі SPA, редіректимо
+            if (state.gameType === 'bunker') { location.replace('/bunker'); return; }
+            if (state.gameType === 'spy')    { location.replace('/spy');    return; }
             document.getElementById('lobby-screen').classList.add('hidden');
             _showEmojiBar(true);
             setQuitBtn(true);
