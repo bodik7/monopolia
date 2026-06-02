@@ -113,10 +113,13 @@ export function DiscussionPhase() {
                     <button key={i} onClick={() => guessLocation(i)}
                       style={{
                         background: 'rgba(255,255,255,0.05)', border: '1px solid var(--spy-border)',
-                        borderRadius: 10, padding: '8px 10px', fontSize: 12, cursor: 'pointer',
-                        color: 'var(--spy-text)', textAlign: 'left', transition: 'all 0.15s',
+                        borderRadius: 10, padding: '8px 6px', fontSize: 11, cursor: 'pointer',
+                        color: 'var(--spy-text)', textAlign: 'center', transition: 'all 0.15s',
+                        lineHeight: 1.3, minHeight: 44, display: 'flex', alignItems: 'center',
+                        justifyContent: 'center', gap: 4, flexDirection: 'column',
                       }}>
-                      {loc.emoji} {loc.name}
+                      <span style={{ fontSize: 18 }}>{loc.emoji}</span>
+                      <span style={{ fontSize: 10 }}>{loc.name}</span>
                     </button>
                   ))}
                 </div>

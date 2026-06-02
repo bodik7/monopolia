@@ -33,14 +33,16 @@ export function RoleRevealPhase() {
             ? iAmSpy
               ? 'linear-gradient(135deg, rgba(220,38,38,0.2), rgba(127,29,29,0.1))'
               : 'linear-gradient(135deg, rgba(124,58,237,0.2), rgba(49,46,129,0.1))'
-            : 'rgba(255,255,255,0.06)',
-          border: `2px solid ${revealed ? (iAmSpy ? 'rgba(220,38,38,0.5)' : 'rgba(124,58,237,0.5)') : 'var(--spy-border)'}`,
+            : 'rgba(255,255,255,0.12)',
+          border: `2px solid ${revealed
+            ? (iAmSpy ? 'rgba(220,38,38,0.5)' : 'rgba(124,58,237,0.5)')
+            : 'rgba(255,255,255,0.25)'}`,
           borderRadius: 24, padding: '36px 28px',
           textAlign: 'center', cursor: revealed ? 'default' : 'pointer',
           transition: 'all 0.4s',
           boxShadow: revealed
             ? `0 8px 40px ${iAmSpy ? 'rgba(220,38,38,0.2)' : 'rgba(124,58,237,0.2)'}`
-            : 'none',
+            : '0 4px 24px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.08)',
         }}
       >
         {!revealed ? (
