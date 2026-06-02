@@ -103,6 +103,11 @@ module.exports = function registerSocketHandlers(io, roomStore, gameCtx) {
             if (!isStr(playerName, 30)) return;
             const code  = generateCode();
             const gtype = ['tysyacha','mafia','durak','bunker','monopoly','spy'].includes(gameType) ? gameType : 'monopoly';
+            // Spy — тільки для адміна (бета)
+            if (gtype === 'spy' && !socket.isAdmin) {
+                if (typeof cb === 'function') cb({ error: 'Гра Шпигун зараз у тестуванні і доступна тільки для адміна.' });
+                return;
+            }
             const room  = {
                 code,
                 players: [{ socketId: socket.id, name: playerName, index: 0, username: socket.username || null, avatarId: socket.avatarId || null, avatarColor: socket.avatarColor || '#1a56db' }],

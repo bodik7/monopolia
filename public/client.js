@@ -231,7 +231,7 @@ function _enterLobby(username, joinCode) {
             const peekEl = document.getElementById('join-room-peek');
             if (!peekEl) return;
             if (error || !players) { peekEl.textContent = ''; return; }
-            const gNames = { tysyacha: 'Тисяча', mafia: 'Мафія', monopoly: 'Монополія', durak: 'Дурак', bunker: 'Бункер' };
+            const gNames = { tysyacha: 'Тисяча', mafia: 'Мафія', monopoly: 'Монополія', durak: 'Дурак', bunker: 'Бункер', spy: 'Шпигун' };
             const specBtn = document.getElementById('spectate-btn');
             if (started) {
                 peekEl.textContent = '⚠️ Гра вже почалась';
@@ -257,6 +257,25 @@ function _enterLobby(username, joinCode) {
         }
     });
     _requestNotifPermission();
+
+    // Spy-картка: видна тільки адміну
+    const spyCard = document.getElementById('game-btn-spy');
+    if (spyCard) {
+        if (_isAdmin) {
+            spyCard.disabled = false;
+            spyCard.style.opacity = '1';
+            spyCard.style.cursor = 'pointer';
+            spyCard.title = '🕵️ Шпигун (бета — тільки для адміна)';
+        } else {
+            spyCard.disabled = true;
+            spyCard.style.opacity = '0.4';
+            spyCard.style.cursor = 'not-allowed';
+            spyCard.title = 'Незабаром…';
+        }
+    }
+    // Mobile dropdown: прибираємо spy для не-адмінів
+    const spyOption = document.querySelector('#game-select-mobile option[value="spy"]');
+    if (spyOption) spyOption.disabled = !_isAdmin;
 }
 
 // ── Кнопки авторизації ────────────────────────
