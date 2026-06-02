@@ -116,6 +116,7 @@
                     <option value="mafia">🔫 Мафія (5–15)</option>
                     <option value="durak">🂡 Дурак (2–6)</option>
                     <option value="bunker">🏚️ Бункер (4–15)</option>
+                    <option value="spy">🕵️ Шпигун (3–10)</option>
                 </select>
 
                 <div class="game-grid">
@@ -158,6 +159,14 @@
                         <span class="game-card-badge">👥 4–15 гравців</span>
                         <span class="game-stat-badge hidden" id="stat-bunker"></span>
                         <span class="game-rooms-badge" id="rooms-bunker"></span>
+                    </button>
+                    <button id="game-btn-spy" class="game-card" data-game="spy" onclick="selectGame('spy')">
+                        <div class="game-card-icon">🕵️</div>
+                        <div class="game-card-name">Шпигун</div>
+                        <div class="game-card-desc">Знайди шпигуна серед гравців —<br>або залишайся непоміченим</div>
+                        <span class="game-card-badge">👥 3–10 гравців</span>
+                        <span class="game-stat-badge hidden" id="stat-spy"></span>
+                        <span class="game-rooms-badge" id="rooms-spy"></span>
                     </button>
                 </div>
             </div>
@@ -223,6 +232,7 @@
                             <button class="lb-game-tab" onclick="loadLeaderboard('mafia')" data-lb="mafia">🔫 Мафія</button>
                             <button class="lb-game-tab" onclick="loadLeaderboard('durak')" data-lb="durak">🂡 Дурак</button>
                             <button class="lb-game-tab" onclick="loadLeaderboard('bunker')" data-lb="bunker">🏚️ Бункер</button>
+                            <button class="lb-game-tab" onclick="loadLeaderboard('spy')" data-lb="spy">🕵️ Шпигун</button>
                         </div>
                         <div id="leaderboard-list" style="overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:4px"></div>
                     </div>

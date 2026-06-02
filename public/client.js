@@ -656,6 +656,7 @@ function createRoom() {
         myPlayerIndex = playerIndex;
         saveSession(code, playerIndex, name);
         if (gameType === 'bunker') { location.replace('/bunker'); return; }
+        if (gameType === 'spy')    { location.replace('/spy');    return; }
         showLobbyWaiting(code);
     });
 }
@@ -671,6 +672,7 @@ function joinRoom() {
         myPlayerIndex = playerIndex;
         saveSession(c, playerIndex, name);
         if (gameType === 'bunker') { location.replace('/bunker'); return; }
+        if (gameType === 'spy')    { location.replace('/spy');    return; }
         showLobbyWaiting(c);
     });
 }
@@ -1105,6 +1107,7 @@ function quickJoin(code) {
         myPlayerIndex = playerIndex;
         saveSession(c, playerIndex, name);
         if (gameType === 'bunker') { location.replace('/bunker'); return; }
+        if (gameType === 'spy')    { location.replace('/spy');    return; }
         showLobbyWaiting(c);
     });
 }

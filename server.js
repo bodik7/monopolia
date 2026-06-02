@@ -67,6 +67,19 @@ if (fs.existsSync(bunkerBuild)) {
     app.get('/bunker*', (req, res) => res.redirect('http://localhost:5173' + req.path.replace('/bunker', '') + (req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '')));
 }
 
+// Шпигун React SPA
+const spyBuild = path.join(__dirname, 'public/spy');
+if (fs.existsSync(spyBuild)) {
+    app.use('/spy', express.static(spyBuild, {
+        setHeaders(res, filePath) {
+            res.setHeader('Cache-Control', filePath.endsWith('.html') ? 'no-store' : 'public, max-age=86400');
+        },
+    }));
+    app.get('/spy/*', (req, res) => res.sendFile(path.join(spyBuild, 'index.html')));
+} else {
+    app.get('/spy*', (req, res) => res.redirect('http://localhost:5174' + req.path.replace('/spy', '') + (req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '')));
+}
+
 // ── Кімнати (in-memory) ──────────────────────
 const rooms = {};
 const roomStore = {
@@ -104,6 +117,7 @@ const tysyachaMod = require('./games/tysyacha.js');
 const durakMod    = require('./games/durak.js');
 const bunkerMod   = require('./games/bunker.js');
 const mafiaMod    = require('./games/mafia.js');
+const spyMod      = require('./games/spy.js');
 
 // ── HTTP маршрути ────────────────────────────
 app.use('/api', require('./routes/auth'));
@@ -132,6 +146,7 @@ monopolyMod.init(io);
 tysyachaMod.init(io);
 durakMod.init(io);
 bunkerMod.init(io, db);
+spyMod.init(io, db);
 mafiaMod.init(io, db, roomStore, (room) => {
     const { MAFIA_ROLE_LABELS } = mafiaMod;
     const mWinner = room.state?.winner;
@@ -159,6 +174,7 @@ const { createTysyachaState, processTysyachaAction, sanitizeTysyacha, clearTysya
 const { createDurakState, processDurakAction, sanitizeDurak, emitDurakUpdate, dStartTurnTimer } = durakMod;
 const { createBunkerState, sanitizeBunker, emitBunkerUpdate, processBunkerAction, startBunkerPhase, startBunkerRound, resolveBunkerVoting, addBunkerLog, BUNKER_ATTR_LABELS, BOT_NAMES } = bunkerMod;
 const { createMafiaState, sanitizeMafia, emitMafiaUpdate, processMafiaAction, startNightPhase, resolveVoting, MAFIA_ROLE_LABELS, MAFIA_BALANCE, getMafiaBotDecisions } = mafiaMod;
+const { createSpyState, sanitizeSpy, processSpyAction, startSpyPhase, clearSpyTimer, scheduleBotActions: scheduleBotActionsspy } = spyMod;
 
 require('./socket/index')(io, roomStore, {
     createGameState, processAction, sanitize, addLog, nextPlayer,
@@ -167,6 +183,7 @@ require('./socket/index')(io, roomStore, {
     createDurakState, processDurakAction, sanitizeDurak, emitDurakUpdate, dStartTurnTimer,
     createBunkerState, sanitizeBunker, emitBunkerUpdate, processBunkerAction, startBunkerPhase, startBunkerRound, clearBunkerTimer, resolveBunkerVoting, addBunkerLog, BUNKER_ATTR_LABELS, BOT_NAMES,
     createMafiaState, sanitizeMafia, emitMafiaUpdate, processMafiaAction, startNightPhase, resolveVoting, MAFIA_ROLE_LABELS, MAFIA_BALANCE, getMafiaBotDecisions,
+    createSpyState, sanitizeSpy, processSpyAction, startSpyPhase, clearSpyTimer, scheduleBotActionsspy,
 });
 
 // ── Відновлення кімнат після перезапуску ────

@@ -10,12 +10,19 @@ module.exports = function makeGameActionHandler(io, roomStore, gameCtx) {
         processTysyachaAction, sanitizeTysyacha, clearTysyachaTimer, startTysyachaTimer, emitTysyachaUpdate,
         processMafiaAction, sanitizeMafia, emitMafiaUpdate, startNightPhase, resolveVoting, MAFIA_ROLE_LABELS,
         processBunkerAction,
+        processSpyAction,
         processAction, sanitize, addLog, nextPlayer,
         clearTurnTimer, clearTradeTimer, startTurnTimer, startTradeTimer,
     } = gameCtx;
 
     return function handleGameAction(room, type, data, playerIndex, socketId) {
         const state = room.state;
+
+        if (state.gameType === 'spy') {
+            room.lastActivityAt = Date.now();
+            processSpyAction(room, type, data, playerIndex);
+            return;
+        }
 
         if (state.gameType === 'bunker') {
             processBunkerAction(room, type, data, playerIndex);

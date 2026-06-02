@@ -2,7 +2,7 @@
 
 module.exports = function makeReconnectHandlers(io, roomStore, gameCtx) {
     const {
-        sanitize, sanitizeDurak, sanitizeTysyacha, sanitizeMafia, sanitizeBunker,
+        sanitize, sanitizeDurak, sanitizeTysyacha, sanitizeMafia, sanitizeBunker, sanitizeSpy,
         emitBunkerUpdate,
     } = gameCtx;
 
@@ -12,6 +12,7 @@ module.exports = function makeReconnectHandlers(io, roomStore, gameCtx) {
         if (gt === 'mafia')    return sanitizeMafia(room.state, pidx);
         if (gt === 'durak')    return sanitizeDurak(room.state, pidx);
         if (gt === 'bunker')   return sanitizeBunker(room.state, pidx);
+        if (gt === 'spy')      return sanitizeSpy(room.state, pidx);
         return sanitize(room.state);
     }
 

@@ -7,6 +7,7 @@ module.exports = function makeGameLifecycleHandlers(io, roomStore, gameCtx) {
         createTysyachaState, sanitizeTysyacha, clearTysyachaTimer, startTysyachaTimer,
         createMafiaState, sanitizeMafia, getMafiaBotDecisions, startNightPhase, MAFIA_BALANCE,
         createBunkerState, sanitizeBunker, clearBunkerTimer, startBunkerPhase,
+        createSpyState, sanitizeSpy, startSpyPhase, clearSpyTimer, scheduleBotActionsspy,
     } = gameCtx;
 
     function launchGame(io, room, gameType) {
@@ -25,6 +26,8 @@ module.exports = function makeGameLifecycleHandlers(io, roomStore, gameCtx) {
             room.players.forEach(rp => { io.to(rp.socketId).emit('gameStarted', { state: sanitizeTysyacha(room.state, rp.index), myPlayerIndex: rp.index, gameType: 'tysyacha' }); });
         } else if (t === 'bunker') {
             room.players.forEach(rp => { io.to(rp.socketId).emit('gameStarted', { state: sanitizeBunker(room.state, rp.index), myPlayerIndex: rp.index, gameType: 'bunker' }); });
+        } else if (t === 'spy') {
+            room.players.forEach(rp => { io.to(rp.socketId).emit('gameStarted', { state: sanitizeSpy(room.state, rp.index), myPlayerIndex: rp.index, gameType: 'spy' }); });
         } else {
             io.to(room.code).emit('gameStarted', { state: sanitize(room.state), gameType: 'monopoly' });
         }
@@ -63,6 +66,13 @@ module.exports = function makeGameLifecycleHandlers(io, roomStore, gameCtx) {
             room.state = createBunkerState(room.players, room.settings || {});
             launchGame(io, room, 'bunker');
             startBunkerPhase(room, 'game_start');
+        } else if (room.gameType === 'spy') {
+            const n = room.players.length;
+            if (n < 3 || n > 10) { io.to(socket.id).emit('error', 'Шпигун: потрібно 3–10 гравців'); room.started = false; return; }
+            room.state = createSpyState(room.players, room.settings || {});
+            launchGame(io, room, 'spy');
+            startSpyPhase(room, 'role_reveal');
+            if (scheduleBotActionsspy) scheduleBotActionsspy(room, 'role_reveal');
         } else {
             if (room.players.length < 2) { io.to(socket.id).emit('error', 'Потрібно мінімум 2 гравці'); room.started = false; return; }
             room.state = createGameState(room.players);
@@ -115,6 +125,12 @@ module.exports = function makeGameLifecycleHandlers(io, roomStore, gameCtx) {
             room.state = createBunkerState(room.players, room.settings || {});
             launchGame(io, room, 'bunker');
             startBunkerPhase(room, 'game_start');
+        } else if (gameType === 'spy') {
+            clearSpyTimer(room);
+            room.state = createSpyState(room.players, room.settings || {});
+            launchGame(io, room, 'spy');
+            startSpyPhase(room, 'role_reveal');
+            if (scheduleBotActionsspy) scheduleBotActionsspy(room, 'role_reveal');
         } else {
             room.state = createGameState(room.players);
             addLog(room.state, `🎮 Реванш! Перший хід: ${room.state.players[0].name}`, 'success');
