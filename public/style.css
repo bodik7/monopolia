@@ -2746,43 +2746,44 @@ body {
         display: block;
         position: absolute;
         top: 0; bottom: 0;
-        width: 280px;
+        width: 240px;
         pointer-events: none;
+        overflow: hidden;
     }
     .auth-decor-left  { left:  0; }
     .auth-decor-right { right: 0; }
     .auth-float-card {
         position: absolute;
-        left: var(--x, 10%);
+        left: var(--x, 15%);
         top:  var(--y, 20%);
         transform: rotate(var(--r, 0deg));
-        background: rgba(255,255,255,0.05);
-        border: 1px solid rgba(255,255,255,0.1);
+        background: rgba(255,255,255,0.06);
+        border: 1px solid rgba(255,255,255,0.12);
         border-radius: 18px;
-        padding: 18px 22px;
+        padding: 16px 18px;
         text-align: center;
-        backdrop-filter: blur(6px);
+        backdrop-filter: blur(8px);
         display: flex;
         flex-direction: column;
         align-items: center;
         gap: 8px;
-        width: 110px;
+        width: 100px;
         animation: float-card 6s ease-in-out infinite;
-        animation-delay: calc(var(--y, 0%) * 0.1s);
     }
     .auth-float-card:nth-child(2) { animation-delay: 2s; }
     .auth-float-card:nth-child(3) { animation-delay: 4s; }
     .auth-float-card > :first-child {
-        font-size: 36px;
+        font-size: 32px;
         line-height: 1;
         filter: drop-shadow(0 2px 8px rgba(0,87,183,0.4));
     }
     .auth-float-card span {
-        font-size: 11px;
+        font-size: 10px;
         font-weight: 700;
         color: rgba(255,255,255,0.5);
         text-transform: uppercase;
         letter-spacing: 0.5px;
+        white-space: nowrap;
     }
     @keyframes float-card {
         0%, 100% { transform: rotate(var(--r, 0deg)) translateY(0px); }
