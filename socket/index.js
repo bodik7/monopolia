@@ -461,6 +461,12 @@ module.exports = function registerSocketHandlers(io, roomStore, gameCtx) {
                 if (room.restartVotes) room.restartVotes.clear();
             }
 
+            // Скидаємо AFK-таймери з попередньої гри
+            if (room.afkTimers) {
+                Object.values(room.afkTimers).forEach(t => clearTimeout(t));
+                room.afkTimers = {};
+            }
+
             const gameType = room.state?.gameType || room.gameType;
             if (gameType === 'durak') {
                 room.state = createDurakState(room.players, room.settings || {});
@@ -503,6 +509,7 @@ module.exports = function registerSocketHandlers(io, roomStore, gameCtx) {
 
         socket.on('action', ({ type, data }) => {
             if (!isStr(type, 50)) return;
+            if (socket.isSpectator || socket.playerIndex == null) return;
             if (!rateLimit(`action:${socket.id}`, 15, 1_000)) return;
             const room = roomStore.get(socket.roomCode);
             if (!room?.state) return;

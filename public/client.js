@@ -398,6 +398,13 @@ function clearSession() {
     localStorage.removeItem(SESSION_KEY);
     _isReady = false;
     _isSpectator = false;
+    // Скидаємо стани ігор щоб старі дані не засмічували нову гру
+    if (typeof dState  !== 'undefined') { dState  = null; }
+    if (typeof tState  !== 'undefined') { tState  = null; }
+    if (typeof mState  !== 'undefined') { mState  = null; }
+    if (typeof dMyIdx  !== 'undefined') { dMyIdx  = -1;   }
+    if (typeof tMyIdx  !== 'undefined') { tMyIdx  = -1;   }
+    if (typeof mMyIdx  !== 'undefined') { mMyIdx  = -1;   }
 }
 
 function setQuitBtn(visible) {
